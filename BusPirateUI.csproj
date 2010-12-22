@@ -139,7 +139,6 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="pic16f628a.xml" />
-    <Content Include="TextFile1.txt" />
   </ItemGroup>
   <ItemGroup>
     <BootstrapperPackage Include="Microsoft.Net.Client.3.5">

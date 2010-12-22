@@ -11,6 +11,7 @@ using System.Threading;
 using System.IO;
 using BusPirateLibCS;
 using BusPiratePICProgrammer;
+using System.Diagnostics;
 
 namespace buspirateraw
 {
@@ -25,7 +26,8 @@ namespace buspirateraw
 		
 		private void Form1_Load(object sender, EventArgs e)
 		{
-			pp = new PIC16Programmer(serialPort1, false);
+			//pp = new PIC16Programmer(serialPort1, false);
+			pp = new PIC18Programmer(serialPort1, false);
 			//pp = new DsPICProgrammer(serialPort1);
 
 
@@ -263,6 +265,92 @@ namespace buspirateraw
 				}
 				txtOut.AppendText((data[i]).ToString("X2") + " ");
 			}
+		}
+
+		private void button1_Click_1(object sender, EventArgs e)
+		{
+
+			var bgw = new BackgroundWorker { WorkerReportsProgress = true, WorkerSupportsCancellation = true };
+
+			
+			
+			byte[] dataBuff = new byte[8];
+			var sb = new StringBuilder();
+
+
+
+			//var file = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments) +
+			//    @"\Code\microchip\testCprog.X\dist\default\production\testCprog.X.production.hex";
+			//var f = new FileStream(file, FileMode.Open);
+			//var h = new HexParser(f);
+			//long lastAddr = 0;
+			//long startAddr = 0;
+			//int prc = 1;
+			//try
+			//{
+			//    txtOut.AppendText(String.Format("\r\n{0:X8} :\r\n", h.Address));
+			//    txtOut.AppendText(String.Format(" {0:X2}", h.Value));
+
+			//    while (h.nextAddress() != long.MaxValue)
+			//    {
+			//        if (h.Address > lastAddr + 1)
+			//        {
+			//            Debug.WriteLine("{0:X}-{1:X}", startAddr, lastAddr);
+			//            txtOut.AppendText(String.Format("\r\n{0:X8} :\r\n", h.Address));
+			//            startAddr = h.Address;
+			//            prc = 0;
+			//        }
+			//        if (prc % 16 == 0)
+			//        {
+			//            txtOut.AppendText("\r\n");
+			//        }
+			//        if (prc % 2 == 0)
+			//        {
+			//            txtOut.AppendText(" ");
+			//        }
+			//        txtOut.AppendText(String.Format("{0:X2}", h.Value));
+			//        lastAddr = h.Address;
+			//        prc++;
+			//    }
+			//}
+			//catch (Exception)
+			//{
+
+			//}
+			//f.Close();
+			//return;
+			this.Enabled = false;
+			bgw.DoWork += (obj, param) =>
+			{
+				pp.readCode(0x300000, dataBuff, 0, dataBuff.Length, bgw.ReportProgress);
+
+				for (int i = 0; i < dataBuff.Length; i += 2)
+				{
+					if (i % 16 == 0)
+					{
+						sb.Append(Environment.NewLine);
+					}
+					sb.Append((dataBuff[i] | dataBuff[i + 1] << 8).ToString("X4") + " ");
+				}
+			};
+
+
+			bgw.ProgressChanged += (s, ev) =>
+			{
+				progressBar1.Value = ev.ProgressPercentage;
+			};
+
+
+			bgw.RunWorkerCompleted += (s, ev) =>
+			{
+				txtOut.Text = sb.ToString();
+				
+				
+				this.Enabled = true;
+
+			};
+
+			bgw.RunWorkerAsync();
 		}
 
 
