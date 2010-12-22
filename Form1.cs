@@ -27,7 +27,23 @@ namespace buspirateraw
 		private void Form1_Load(object sender, EventArgs e)
 		{
 			//pp = new PIC16Programmer(serialPort1, false);
-			pp = new PIC18Programmer(serialPort1, false);
+			var failsLeft = 10;
+			while (pp == null && failsLeft > 0) { 
+				try
+				{
+					pp = new PIC18Programmer(serialPort1, false);
+				}
+				catch (Exception ex)
+				{
+					Debug.WriteLine(ex.ToString());
+					serialPort1.Close();
+					Thread.Sleep(10);
+					
+				}
+			}
+
+			if (failsLeft == 0)
+				Application.Exit();
 			//pp = new DsPICProgrammer(serialPort1);
 
 
@@ -274,64 +290,82 @@ namespace buspirateraw
 
 			
 			
-			byte[] dataBuff = new byte[8];
+			
 			var sb = new StringBuilder();
 
 
 
-			//var file = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments) +
-			//    @"\Code\microchip\testCprog.X\dist\default\production\testCprog.X.production.hex";
-			//var f = new FileStream(file, FileMode.Open);
-			//var h = new HexParser(f);
-			//long lastAddr = 0;
-			//long startAddr = 0;
-			//int prc = 1;
-			//try
-			//{
-			//    txtOut.AppendText(String.Format("\r\n{0:X8} :\r\n", h.Address));
-			//    txtOut.AppendText(String.Format(" {0:X2}", h.Value));
-
-			//    while (h.nextAddress() != long.MaxValue)
-			//    {
-			//        if (h.Address > lastAddr + 1)
-			//        {
-			//            Debug.WriteLine("{0:X}-{1:X}", startAddr, lastAddr);
-			//            txtOut.AppendText(String.Format("\r\n{0:X8} :\r\n", h.Address));
-			//            startAddr = h.Address;
-			//            prc = 0;
-			//        }
-			//        if (prc % 16 == 0)
-			//        {
-			//            txtOut.AppendText("\r\n");
-			//        }
-			//        if (prc % 2 == 0)
-			//        {
-			//            txtOut.AppendText(" ");
-			//        }
-			//        txtOut.AppendText(String.Format("{0:X2}", h.Value));
-			//        lastAddr = h.Address;
-			//        prc++;
-			//    }
-			//}
-			//catch (Exception)
-			//{
-
-			//}
-			//f.Close();
-			//return;
 			this.Enabled = false;
 			bgw.DoWork += (obj, param) =>
 			{
-				pp.readCode(0x300000, dataBuff, 0, dataBuff.Length, bgw.ReportProgress);
 
-				for (int i = 0; i < dataBuff.Length; i += 2)
+				var file = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments) +
+				@"\Code\microchip\testCprog.X\dist\default\production\testCprog.X.production.hex";
+				var f = new FileStream(file, FileMode.Open);
+				var h = new HexParser(f);
+				long lastAddr = 0;
+				long startAddr = 0;
+
+
+				Queue<Tuple<int, byte[]>> blocks = new Queue<Tuple<int, byte[]>>();
+
+
+				Queue<byte> block = new Queue<byte>();
+
+				block.Enqueue(h.Value);
+
+				while (h.nextAddress() != long.MaxValue)
 				{
-					if (i % 16 == 0)
+					if (h.Address > lastAddr + 1)
 					{
-						sb.Append(Environment.NewLine);
+						blocks.Enqueue(new Tuple<int, byte[]>((int)startAddr, block.ToArray()));
+						block = new Queue<byte>();
+						startAddr = h.Address;
 					}
-					sb.Append((dataBuff[i] | dataBuff[i + 1] << 8).ToString("X4") + " ");
+
+					block.Enqueue(h.Value);
+					lastAddr = h.Address;
 				}
+
+				blocks.Enqueue(new Tuple<int, byte[]>((int)startAddr, block.ToArray()));
+
+				f.Close();
+				var myset = from x in blocks
+							select x.Item1;
+
+				pp.bulkErase();
+				sb.AppendLine("erased");
+
+				foreach (var st in myset)
+				{
+					readCodeToSB(bgw, sb, st, 0x10);
+				}
+				sb.AppendLine();
+
+				foreach (var b in blocks)
+				{
+					var address = b.Item1;
+					var data = b.Item2;
+
+
+					if (address < 0x300000)
+					{
+						sb.AppendLine(string.Format("Writing code @ {0:X6} - {1:X6}", address, address + data.Length));
+						pp.writeCode(address, data, 0, data.Length, bgw.ReportProgress);
+					}
+					else
+					{
+						sb.AppendLine(string.Format("Writing conf @ {0:X6} - {1:X6}", address, address + data.Length));
+						pp.writeConfig(address, data, 0, data.Length, bgw.ReportProgress);
+					}
+				}
+
+				foreach (var st in myset)
+				{
+					readCodeToSB(bgw, sb, st, 0x10);
+				}
+				sb.AppendLine();
+
 			};
 
 
@@ -346,6 +380,102 @@ namespace buspirateraw
 				txtOut.Text = sb.ToString();
 				
 				
+				this.Enabled = true;
+
+			};
+
+			bgw.RunWorkerAsync();
+		}
+
+		private byte[] readCodeToSB(BackgroundWorker bgw, StringBuilder sb, int targetAddr, int targetLen)
+		{
+
+			//sb.Append(string.Format("Address: {0:X6} - {1:X6}", targetAddr, targetAddr + targetLen));
+			byte[] dataBuff = new byte[targetLen];
+			pp.readCode(targetAddr, dataBuff, 0, dataBuff.Length, bgw.ReportProgress);
+
+			for (int i = 0; i < dataBuff.Length; i += 2)
+			{
+				if (i % 16 == 0)
+				{
+					sb.AppendLine();
+					sb.AppendFormat("{0:X8} : ", targetAddr + i);
+				}
+				sb.Append((dataBuff[i] | dataBuff[i + 1] << 8).ToString("X4") + " ");
+			}
+			return dataBuff;
+		}
+
+		private void button2_Click(object sender, EventArgs e)
+		{
+			var bgw = new BackgroundWorker { WorkerReportsProgress = true, WorkerSupportsCancellation = true };
+
+
+
+
+			var sb = new StringBuilder();
+
+
+
+			this.Enabled = false;
+			bgw.DoWork += (obj, param) =>
+			{
+
+				var file = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments) +
+				@"\Code\microchip\testCprog.X\dist\default\production\testCprog.X.production.hex";
+				var f = new FileStream(file, FileMode.Open);
+				var h = new HexParser(f);
+				long lastAddr = 0;
+				long startAddr = 0;
+
+
+				Queue<Tuple<int, byte[]>> blocks = new Queue<Tuple<int, byte[]>>();
+
+
+				Queue<byte> block = new Queue<byte>();
+
+				block.Enqueue(h.Value);
+
+				while (h.nextAddress() != long.MaxValue)
+				{
+					if (h.Address > lastAddr + 1)
+					{
+						blocks.Enqueue(new Tuple<int, byte[]>((int)startAddr, block.ToArray()));
+						block = new Queue<byte>();
+						startAddr = h.Address;
+					}
+
+					block.Enqueue(h.Value);
+					lastAddr = h.Address;
+				}
+
+				blocks.Enqueue(new Tuple<int, byte[]>((int)startAddr, block.ToArray()));
+
+				f.Close();
+				var myset = from x in blocks
+							select x.Item1;
+
+				foreach (var st in myset)
+				{
+					readCodeToSB(bgw, sb, st, 0x10);
+				}
+				sb.AppendLine();
+
+
+			};
+
+
+			bgw.ProgressChanged += (s, ev) =>
+			{
+				progressBar1.Value = ev.ProgressPercentage;
+			};
+
+
+			bgw.RunWorkerCompleted += (s, ev) =>
+			{
+				txtOut.Text = sb.ToString();
+
+
 				this.Enabled = true;
 
 			};
