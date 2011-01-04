@@ -31,7 +31,7 @@ namespace buspirateraw
 			while (pp == null && failsLeft > 0) { 
 				try
 				{
-					pp = new PIC18Programmer(serialPort1, false);
+					pp = new PIC18Programmer(serialPort1, true);
 				}
 				catch (Exception ex)
 				{
@@ -342,6 +342,11 @@ namespace buspirateraw
 				}
 				sb.AppendLine();
 
+				var blankData = new byte[64];
+
+				Random r = new Random();
+				r.NextBytes(blankData);
+
 				foreach (var b in blocks)
 				{
 					var address = b.Item1;
@@ -352,11 +357,14 @@ namespace buspirateraw
 					{
 						sb.AppendLine(string.Format("Writing code @ {0:X6} - {1:X6}", address, address + data.Length));
 						pp.writeCode(address, data, 0, data.Length, bgw.ReportProgress);
+						
+						//pp.writeCode(address, blankData, 0, blankData.Length, bgw.ReportProgress);
 					}
 					else
 					{
 						sb.AppendLine(string.Format("Writing conf @ {0:X6} - {1:X6}", address, address + data.Length));
 						pp.writeConfig(address, data, 0, data.Length, bgw.ReportProgress);
+						//pp.writeConfig(address, blankData, 0, blankData.Length, bgw.ReportProgress);
 					}
 				}
 
@@ -481,6 +489,11 @@ namespace buspirateraw
 			};
 
 			bgw.RunWorkerAsync();
+		}
+
+		private void button3_Click(object sender, EventArgs e)
+		{
+			pp.bulkErase();
 		}
 
 
