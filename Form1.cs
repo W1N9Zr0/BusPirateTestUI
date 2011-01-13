@@ -336,11 +336,11 @@ namespace buspirateraw
 				pp.bulkErase();
 				sb.AppendLine("erased");
 
-				foreach (var st in myset)
-				{
-					readCodeToSB(bgw, sb, st, 0x10);
-				}
-				sb.AppendLine();
+				//foreach (var st in myset)
+				//{
+				//    readCodeToSB(bgw, sb, st, 0x10);
+				//}
+				//sb.AppendLine();
 
 				var blankData = new byte[64];
 
@@ -368,10 +368,10 @@ namespace buspirateraw
 					}
 				}
 
-				foreach (var st in myset)
-				{
-					readCodeToSB(bgw, sb, st, 0x10);
-				}
+				//foreach (var st in myset)
+				//{
+				//    readCodeToSB(bgw, sb, st, 0x10);
+				//}
 				sb.AppendLine();
 
 			};
