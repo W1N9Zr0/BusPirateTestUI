@@ -46,6 +46,7 @@
 		this.button1 = new System.Windows.Forms.Button();
 		this.button2 = new System.Windows.Forms.Button();
 		this.button3 = new System.Windows.Forms.Button();
+		this.btnRead18Conf = new System.Windows.Forms.Button();
 		this.SuspendLayout();
 		// 
 		// txtOut
@@ -97,7 +98,7 @@
 		// serialPort1
 		// 
 		this.serialPort1.BaudRate = 115200;
-		this.serialPort1.PortName = "COM3";
+		this.serialPort1.PortName = "COM13";
 		this.serialPort1.ReadBufferSize = 8192;
 		this.serialPort1.WriteBufferSize = 8192;
 		// 
@@ -181,9 +182,9 @@
 		// 
 		this.button1.Location = new System.Drawing.Point(441, 243);
 		this.button1.Name = "button1";
-		this.button1.Size = new System.Drawing.Size(75, 23);
+		this.button1.Size = new System.Drawing.Size(98, 23);
 		this.button1.TabIndex = 13;
-		this.button1.Text = "button1";
+		this.button1.Text = "burn hex";
 		this.button1.UseVisualStyleBackColor = true;
 		this.button1.Click += new System.EventHandler(this.button1_Click_1);
 		// 
@@ -191,9 +192,9 @@
 		// 
 		this.button2.Location = new System.Drawing.Point(441, 214);
 		this.button2.Name = "button2";
-		this.button2.Size = new System.Drawing.Size(75, 23);
+		this.button2.Size = new System.Drawing.Size(98, 23);
 		this.button2.TabIndex = 14;
-		this.button2.Text = "button2";
+		this.button2.Text = "verify hex";
 		this.button2.UseVisualStyleBackColor = true;
 		this.button2.Click += new System.EventHandler(this.button2_Click);
 		// 
@@ -201,17 +202,28 @@
 		// 
 		this.button3.Location = new System.Drawing.Point(441, 273);
 		this.button3.Name = "button3";
-		this.button3.Size = new System.Drawing.Size(75, 23);
+		this.button3.Size = new System.Drawing.Size(98, 23);
 		this.button3.TabIndex = 15;
-		this.button3.Text = "button3";
+		this.button3.Text = "Bulk erase";
 		this.button3.UseVisualStyleBackColor = true;
 		this.button3.Click += new System.EventHandler(this.button3_Click);
+		// 
+		// btnRead18Conf
+		// 
+		this.btnRead18Conf.Location = new System.Drawing.Point(548, 214);
+		this.btnRead18Conf.Name = "btnRead18Conf";
+		this.btnRead18Conf.Size = new System.Drawing.Size(97, 23);
+		this.btnRead18Conf.TabIndex = 16;
+		this.btnRead18Conf.Text = "Read Conf";
+		this.btnRead18Conf.UseVisualStyleBackColor = true;
+		this.btnRead18Conf.Click += new System.EventHandler(this.btnRead18Conf_Click);
 		// 
 		// Form1
 		// 
 		this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
 		this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
 		this.ClientSize = new System.Drawing.Size(657, 437);
+		this.Controls.Add(this.btnRead18Conf);
 		this.Controls.Add(this.button3);
 		this.Controls.Add(this.button2);
 		this.Controls.Add(this.button1);
@@ -255,6 +267,7 @@
 	private System.Windows.Forms.Button button1;
 	private System.Windows.Forms.Button button2;
 	private System.Windows.Forms.Button button3;
+	private System.Windows.Forms.Button btnRead18Conf;
   }
 }
 

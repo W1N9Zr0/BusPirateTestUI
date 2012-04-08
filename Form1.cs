@@ -399,7 +399,18 @@ namespace buspirateraw
 		{
 
 			//sb.Append(string.Format("Address: {0:X6} - {1:X6}", targetAddr, targetAddr + targetLen));
+			if (targetAddr % 2 != 0)
+			{
+				targetAddr -= 1;
+				targetLen += 1;
+			}
+			if (targetLen % 2 == 1)
+			{
+				targetLen += 1;
+			}
+
 			byte[] dataBuff = new byte[targetLen];
+			
 			pp.readCode(targetAddr, dataBuff, 0, dataBuff.Length, bgw.ReportProgress);
 
 			for (int i = 0; i < dataBuff.Length; i += 2)
@@ -460,12 +471,10 @@ namespace buspirateraw
 				blocks.Enqueue(new Tuple<int, byte[]>((int)startAddr, block.ToArray()));
 
 				f.Close();
-				var myset = from x in blocks
-							select x.Item1;
 
-				foreach (var st in myset)
+				foreach (var st in blocks)
 				{
-					readCodeToSB(bgw, sb, st, 0x10);
+					readCodeToSB(bgw, sb, st.Item1, st.Item2.Length);
 				}
 				sb.AppendLine();
 
@@ -494,6 +503,47 @@ namespace buspirateraw
 		private void button3_Click(object sender, EventArgs e)
 		{
 			pp.bulkErase();
+		}
+
+		private void btnRead18Conf_Click(object sender, EventArgs e)
+		{
+			var bgw = new BackgroundWorker { WorkerReportsProgress = true, WorkerSupportsCancellation = true };
+
+			var sb = new StringBuilder();
+
+			this.Enabled = false;
+			bgw.DoWork += (obj, param) =>
+			{
+				var blocks = new Queue<Tuple<int, int>>();
+				blocks.Enqueue(new Tuple<int, int>(0x300000, 0x30000D - 0x300000 + 1));
+				blocks.Enqueue(new Tuple<int, int>(0x3FFFFE, 2));
+
+				foreach (var st in blocks)
+				{
+					readCodeToSB(bgw, sb, st.Item1, st.Item2);
+				}
+				sb.AppendLine();
+
+
+			};
+
+
+			bgw.ProgressChanged += (s, ev) =>
+			{
+				progressBar1.Value = ev.ProgressPercentage;
+			};
+
+
+			bgw.RunWorkerCompleted += (s, ev) =>
+			{
+				txtOut.Text = sb.ToString();
+
+
+				this.Enabled = true;
+
+			};
+
+			bgw.RunWorkerAsync();
 		}
 
 
