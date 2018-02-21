@@ -12,6 +12,8 @@ using System.IO;
 using BusPirateLibCS;
 using BusPiratePICProgrammer;
 using System.Diagnostics;
+using System.Management;
+using System.Text.RegularExpressions;
 
 namespace buspirateraw
 {
@@ -23,12 +25,24 @@ namespace buspirateraw
 		}
 
 
-		
+
+		private ManagementEventWatcher _DeviceChangeWatcher;
 		private void Form1_Load(object sender, EventArgs e)
+		{
+			FindSerialPorts();
+
+			_DeviceChangeWatcher = new ManagementEventWatcher(@"root\CIMV2", "SELECT * FROM Win32_DeviceChangeEvent");
+
+			_DeviceChangeWatcher.Start();
+			_DeviceChangeWatcher.EventArrived += new EventArrivedEventHandler(watcher_EventArrived);
+		}
+
+		private void connectProgrammer()
 		{
 			//pp = new PIC16Programmer(serialPort1, false);
 			var failsLeft = 10;
-			while (pp == null && failsLeft > 0) { 
+			while (pp == null && failsLeft > 0)
+			{
 				try
 				{
 					pp = new PIC18Programmer(serialPort1, true);
@@ -38,20 +52,69 @@ namespace buspirateraw
 					Debug.WriteLine(ex.ToString());
 					serialPort1.Close();
 					Thread.Sleep(10);
-					
+
 				}
 			}
 
 			if (failsLeft == 0)
 				Application.Exit();
 			//pp = new DsPICProgrammer(serialPort1);
-
-
-			
 		}
+
 		PicProgrammer pp;
 
+		public class PortInfo
+		{
+			public string DeviceName { get; set; }
+			public string PortName { get; set; }
+		}
 
+		private void FindSerialPorts()
+		{
+			var ports = new List<PortInfo>();
+
+			using (var searcher = new ManagementObjectSearcher(
+				@"root\CIMV2",
+				"SELECT * FROM Win32_PnPEntity WHERE ClassGuid=\"{4d36e978-e325-11ce-bfc1-08002be10318}\""))
+			{
+				var reCom = new Regex(@"\((COM\d+)\)");
+				foreach (ManagementObject queryObj in searcher.Get())
+				{
+					var deviceName = queryObj["Name"] as string;
+					var m = reCom.Match(deviceName);
+
+					if (m.Success)
+					{
+						var portName = m.Groups[1].Value;
+						ports.Add(new PortInfo() { PortName = portName, DeviceName = deviceName });
+					}
+				}
+			}
+
+			ports = ports.OrderBy(x => x.PortName).ToList();
+
+			Invoke((MethodInvoker) delegate {
+				lstPorts.DataSource = ports;
+				lstPorts.Refresh();
+			});
+		}
+
+		void watcher_EventArrived(object sender, EventArrivedEventArgs e)
+		{
+			var ev = e.NewEvent;
+			var type = Convert.ToInt32(ev.Properties["EventType"].Value);
+			if (type == 2)
+			{
+				Debug.WriteLine("connect!");
+				FindSerialPorts();
+			}
+			else if (type == 3)
+			{
+				Debug.WriteLine("disconnect!");
+				FindSerialPorts();
+			}
+		}
+		
 		private void button1_Click(object sender, EventArgs e)
 		{
 			pp.Program = !pp.Program;
@@ -61,6 +124,8 @@ namespace buspirateraw
 
 		private void Form1_FormClosing(object sender, FormClosingEventArgs e)
 		{
+			_DeviceChangeWatcher.Stop();
+
 			timer1.Stop();
 			if (pp != null)
 				pp.close();
@@ -544,6 +609,16 @@ namespace buspirateraw
 			};
 
 			bgw.RunWorkerAsync();
+		}
+
+		private void lstPorts_SelectedIndexChanged(object sender, EventArgs e)
+		{
+			serialPort1.PortName = lstPorts.SelectedValue as string;
+		}
+
+		private void btnPicConnect_Click(object sender, EventArgs e)
+		{
+			connectProgrammer();
 		}
 
 
